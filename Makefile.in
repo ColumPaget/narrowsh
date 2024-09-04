@@ -1,0 +1,11 @@
+LIBS=@LIBS@
+FLAGS=@DEFS@
+
+all: @LIBUSEFUL_BUNDLED@
+	gcc $(FLAGS) -onarrowsh main.c @LIBS@ @LIBUSEFUL_BUNDLED@
+
+@LIBUSEFUL_BUNDLED@:
+	$(MAKE) -C libUseful-5
+
+clean:
+	rm *.o *.orig .*.swp */*.o */*.a */*.so
