@@ -1,10 +1,14 @@
 #define _GNU_SOURCE
-#include <sched.h>
 #include <syslog.h>
 #include "libUseful-5/libUseful.h"
 
 #ifdef USE_NO_NEW_PRIVS
 #include <sys/prctl.h>
+#endif
+
+#ifdef USE_NAMESPACES
+#include <sched.h>
+#include <sys/mount.h>
 #endif
 
 #define FLAG_INTERACTIVE   1
@@ -16,7 +20,7 @@
 #define FLAG_NOPIDS     8192
 #define FLAG_NOEXEC    16384
 
-#define VERSION "1.0"
+#define VERSION "2.0"
 
 char *RulesDir=NULL;
 ListNode *Rules=NULL;
@@ -82,7 +86,8 @@ void ProcessParseSettings(TProcSettings *Settings, const char *Config)
         else if (strcmp(Name, "nonet")==0) Settings->Flags |= FLAG_NONET;
         else if (strcmp(Name, "noipc")==0) Settings->Flags |= FLAG_NOIPC;
         else if (strcmp(Name, "noexec")==0) Settings->Flags |= FLAG_NOEXEC;
-        //else if (strcmp(Name, "nopid")==0) Settings->Flags |= FLAG_NOPIDS;
+        else if (strcmp(Name, "nopid")==0) Settings->Flags |= FLAG_NOPIDS;
+        else if (strcmp(Name, "nopids")==0) Settings->Flags |= FLAG_NOPIDS;
         else if (strcmp(Name, "nice")==0) Settings->Nice=atoi(Value);
         else if (strcmp(Name, "timeout")==0) Settings->Timeout=ParseDuration(Value);
         else if (strcmp(Name, "files")==0) Settings->MaxFiles=atoi(Value);
@@ -234,14 +239,16 @@ void PrintHelp()
     printf("  -c <command line>  command-line to run, as in ´/bin/sh -c <command>´\n");
     printf("  -i                 force interactive mode (otherwise must be set in config file>\n");
     printf("  -m                 force menu mode (otherwise must be set in config file>\n");
-		printf("  -1                 'oneshot' menu, only allow running one program, then disconnect after it's run\n");
-		printf("  -once              'oneshot' menu, only allow running one program, then disconnect after it's run\n");
-		printf("  -oneshot           'oneshot' menu, only allow running one program, then disconnect after it's run\n");
+    printf("  -1                 'oneshot' menu, only allow running one program, then disconnect after it's run\n");
+    printf("  -once              'oneshot' menu, only allow running one program, then disconnect after it's run\n");
+    printf("  -oneshot           'oneshot' menu, only allow running one program, then disconnect after it's run\n");
     printf("  -S                 disallow use of su/sudo/suid\n");
     printf("  -X                 disallow running further child programs (attempts to block 'fork()')\n");
-    printf("  -N                 enter a namespace with no network access\n");
-    printf("  -I                 enter a namespace with no Inter Process Communication access\n");
-    //printf("  -P               enter a namespace that cannot see other processes running on the system\n");
+#ifdef USE_NAMESPACES
+    printf("  -N                 create a namespace with no network access\n");
+    printf("  -I                 create a namespace with no Inter Process Communication access\n");
+    printf("  -P                 create a namespace that cannot see other processes running on the system\n");
+#endif
     printf("  -n <value>         run with process priority (´nice´) of <value>\n");
     printf("  -T <value>         inactivity timeout after ´value´ secs. Suffixes of ´m´ ´h´ can be used for minutes and hours\n");
     printf("  -f <value>         maximum numbers of files that can be opened\n");
@@ -261,13 +268,15 @@ void PrintHelp()
     printf("  interactive        read commands from std-in like a normal shell (can only be set against 'narrowsh')\n");
     printf("  menu               display a menu of commands to choose from (can only be set against 'narrowsh')\n");
     printf("  once               only allow picking one option from the menu, and exit once that command is run\n");
-		printf("  banner=<string>    set a banner to display at top of menu (can only be set against 'narrowsh')\n");
+    printf("  banner=<string>    set a banner to display at top of menu (can only be set against 'narrowsh')\n");
+#ifdef USE_NAMESPACES
     printf("  nosu               prevent any user change via su/sudo/suid\n");
     printf("  nonet              use namespaces to disable network access\n");
     printf("  noipc              use namespaces to disable IPC access\n");
+    printf("  nopid              use namespaces to hide all other system processes\n");
     printf("  hostname=<string>  use namespaces to 'fake' system hostname\n");
+#endif
     printf("  noexec             prevent the launched process from itself spawning further execuatables (currently works by blocking fork)\n");
-    //printf("  nopid              use namespaces to disable viewing other processes\n");
     printf("  nice=<value>       set processor usage level ('nice') to <value>\n");
     printf("  timeout=<value>    disconnect if idle for 'value' seconds\n");
     printf("  files=<value>      maximum number of open files\n");
@@ -282,7 +291,7 @@ void PrintHelp()
     printf("  args=<string>      force command-line arguments for command\n");
     printf("  sha256=<string>    sha256 of command executable or script, command will not be run if this doesn't match\n");
     printf("\n");
-		printf("If the 'args' option is used, then the user must enter a command-line that matches exactly. If it is not used, and there is a matching command that doesn't have the 'args' option, then the user will be able to provide their own arguments to the command.\n");
+    printf("If the 'args' option is used, then the user must enter a command-line that matches exactly. If it is not used, and there is a matching command that doesn't have the 'args' option, then the user will be able to provide their own arguments to the command.\n");
     printf("\nexample config file: \n");
     printf("    narrowsh interactive nopid files=20 mem=10M\n");
     printf("    /usr/sbin/ppp\n");
@@ -315,7 +324,7 @@ char *ParseCommandLine(char *RetStr, int argc, char **argv)
         else if (strcmp(p_Arg, "-N")==0) GlobalSettings.Flags |= FLAG_NONET;
         else if (strcmp(p_Arg, "-I")==0) GlobalSettings.Flags |= FLAG_NOIPC;
         else if (strcmp(p_Arg, "-X")==0) GlobalSettings.Flags |= FLAG_NOEXEC;
-        //else if (strcmp(p_Arg, "-P")==0) GlobalSettings.Flags |= FLAG_NOPIDS;
+        else if (strcmp(p_Arg, "-P")==0) GlobalSettings.Flags |= FLAG_NOPIDS;
         else if (strcmp(p_Arg, "-n")==0) GlobalSettings.Nice=atoi(CommandLineNext(Cmd));
         else if (strcmp(p_Arg, "-T")==0) GlobalSettings.Timeout=ParseDuration(CommandLineNext(Cmd));
         else if (strcmp(p_Arg, "-f")==0) GlobalSettings.MaxFiles=atoi(CommandLineNext(Cmd));
@@ -404,25 +413,116 @@ ListNode *RequestFindMatch(const char *Request)
     return(Item);
 }
 
-int ProcessSetupRestrictions(TProcSettings *Settings)
+
+#ifdef USE_NAMESPACES
+void UnshareMapUID(pid_t pid, uid_t uid, gid_t gid)
+{
+    char *Tempstr=NULL;
+    int fd;
+
+    Tempstr=FormatStr(Tempstr, "/proc/%d/uid_map", pid);
+    fd=open(Tempstr, O_WRONLY | O_CREAT);
+    if (fd > -1)
+    {
+        //Tempstr=FormatStr(Tempstr, "%d %d 1\n", 65534, uid);
+        Tempstr=FormatStr(Tempstr, "%d %d 1\n", uid, uid);
+        write(fd, Tempstr, StrLen(Tempstr));
+        close(fd);
+    }
+
+    Tempstr=FormatStr(Tempstr, "/proc/%d/gid_map", pid);
+    fd=open(Tempstr, O_WRONLY | O_CREAT);
+    if (fd > -1)
+    {
+        //Tempstr=FormatStr(Tempstr, "%d %d 1\n", 65534, uid);
+        Tempstr=FormatStr(Tempstr, "%d %d 1\n", gid, gid);
+        write(fd, Tempstr, StrLen(Tempstr));
+        close(fd);
+    }
+
+    Destroy(Tempstr);
+}
+
+
+void UnshareLaunchInit()
+{
+    pid_t pid;
+
+    //we are in a new pid namespace, so remount /proc
+		mount(NULL, "/proc", NULL, MS_PRIVATE|MS_REC, NULL);
+		umount("/proc");
+		mount(NULL, "/proc", "proc", 0, NULL);
+
+
+    if (fork() != 0)
+    {
+        //we are the init. All we do is collect pids
+        while(waitpid(-1, NULL, 0) > -1);
+        exit(0);
+    }
+    //if we get here then we are the new child process, not the init.
+}
+
+
+
+void UnshareNamespaces(TProcSettings *Settings)
 {
     int Unshares=0;
-    char *ProcessConfig=NULL, *Tempstr=NULL;
-    pid_t pid;
+    uid_t ouid;
+    gid_t ogid;
+
+    pid_t pid, opid;
+
 
     //all this containers stuff will eventually be handled in libUseful,
     //but that is still a work in progress
     if (Settings->Flags & FLAG_NONET) Unshares |= CLONE_NEWNET;
     if (Settings->Flags & FLAG_NOIPC) Unshares |= CLONE_NEWIPC;
+    if (Settings->Flags & FLAG_NOPIDS) Unshares |= CLONE_NEWPID;
     if (StrValid(Settings->HostName)) Unshares |= CLONE_NEWUTS;
-    //if (Settings->Flags & FLAG_NOPIDS) Unshares |= CLONE_NEWPID;
 
     if (Unshares)
     {
-        unshare(CLONE_NEWUSER | Unshares);
+				//we must capture our 'outside' uid and gid and pid in order to map them
+				//inside the container
+        ouid=getuid();
+        ogid=getgid();
+				opid=getpid();
+
+        unshare(CLONE_NEWUSER | CLONE_NEWNS | Unshares);
+        pid=fork();
+        if (pid == 0)
+        {
+						//do this before proc remapped
+						UnshareMapUID(opid, ouid, ogid);
+            if (Unshares & CLONE_NEWPID) UnshareLaunchInit();
+        		if (StrValid(Settings->HostName)) sethostname(Settings->HostName, StrLen(Settings->HostName));
+            setgid(ogid);
+            setuid(ouid);
+        }
+        else
+        {
+//	UnshareMapUID(pid);
+				//the process outside of the pid namespace must stay
+				//alive, as it's our only connection to the namespaces
+        while (waitpid(-1, NULL, 0) > -1);
+        exit(0);
+        }
+
     }
 
-    if (StrValid(Settings->HostName)) sethostname(Settings->HostName, StrLen(Settings->HostName));
+
+}
+#endif
+
+int ProcessSetupRestrictions(TProcSettings *Settings)
+{
+    char *ProcessConfig=NULL, *Tempstr=NULL;
+    pid_t pid;
+
+#ifdef USE_NAMESPACES
+    UnshareNamespaces(Settings);
+#endif
 
     if (Settings->Nice > 0)
     {
@@ -576,8 +676,8 @@ int ChallengeResponseProcess(STREAM *StdIn, const char *Secret)
 
 int ProcessAuthentications(const char *Cmd, TProcSettings *Settings)
 {
-char *Path=NULL, *Hash=NULL;
-int result=TRUE;
+    char *Path=NULL, *Hash=NULL;
+    int result=TRUE;
 
     if (StrValid(Settings->OTP))
     {
@@ -589,22 +689,22 @@ int result=TRUE;
         if (! ChallengeResponseProcess(StdIn, Settings->Challenge)) return(FALSE);
     }
 
-		//
-		if ( StrValid(Cmd) && StrValid(Settings->SHA256) )
-		{
-			GetToken(Cmd, "\\S", &Path, 0);
+    //
+    if ( StrValid(Cmd) && StrValid(Settings->SHA256) )
+    {
+        GetToken(Cmd, "\\S", &Path, 0);
 
-      HashFile(&Hash, "sha256", Path, ENCODE_HEX);
-		  if (strcasecmp(Hash, Settings->SHA256) !=0) 
-			{
-				Hash=MCopyStr(Hash, "refusing to run ", Path, NULL);
-        LogMessage(Hash, "SHA256 hash does not match expected");
-				result=FALSE;
-			}
-		}
+        HashFile(&Hash, "sha256", Path, ENCODE_HEX);
+        if (strcasecmp(Hash, Settings->SHA256) !=0)
+        {
+            Hash=MCopyStr(Hash, "refusing to run ", Path, NULL);
+            LogMessage(Hash, "SHA256 hash does not match expected");
+            result=FALSE;
+        }
+    }
 
-		Destroy(Hash);
-		Destroy(Path);
+    Destroy(Hash);
+    Destroy(Path);
 
     return(result);
 }
@@ -696,7 +796,9 @@ void SpawnRequest(const char *Request)
         PerformRequest(Request);
         _exit(0);
     }
-    else waitpid(pid, NULL, 0);
+    //wait for all subprocesses in the session
+    //to exit
+    else while (waitpid(-1, NULL, 0) > -1);
 }
 
 
@@ -783,8 +885,8 @@ void MenuMode()
 
             if (StrValid(Cmd))
             {
-                if (GlobalSettings.Flags & FLAG_ONESHOT) PerformRequest(Cmd);
-                else SpawnRequest(Cmd);
+                SpawnRequest(Cmd);
+                if (GlobalSettings.Flags & FLAG_ONESHOT) break;
             }
         }
     }
@@ -814,7 +916,7 @@ int main(int argc, char *argv[])
     //perform any top-level authentications if those exist
     if (ProcessAuthentications(NULL, &GlobalSettings))
     {
-        if (StrValid(Request)) PerformRequest(Request);
+        if (StrValid(Request)) SpawnRequest(Request);
         else if (GlobalSettings.Flags & FLAG_MENU) MenuMode();
         else if (GlobalSettings.Flags & FLAG_INTERACTIVE) InteractiveMode();
     }

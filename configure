@@ -703,9 +703,10 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-enable_largefile
 enable_nosu
+enable_namespaces
 with_libuseful
+enable_largefile
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1331,8 +1332,9 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --disable-largefile     omit support for large files
   --enable-nosu           use prctl to set 'no new privs' preventing su/sudo (default=yes)
+  --enable-namespaces     use linux namespaces (default=auto)
+  --disable-largefile     omit support for large files
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -3407,6 +3409,32 @@ printf "%s\n" "$ac_cv_path_EGREP" >&6; }
 
 
 
+# Check whether --enable-nosu was given.
+if test ${enable_nosu+y}
+then :
+  enableval=$enable_nosu; cf_use_nosu=$enableval
+else $as_nop
+  cf_use_nosu="yes"
+fi
+
+# Check whether --enable-namespaces was given.
+if test ${enable_namespaces+y}
+then :
+  enableval=$enable_namespaces; cf_use_namespaces=$enableval
+else $as_nop
+  cf_use_namespaces="yes"
+fi
+
+
+# Check whether --with-libuseful was given.
+if test ${with_libuseful+y}
+then :
+  withval=$with_libuseful; cf_system_libuseful=$withval
+fi
+
+
+
+
 # Check whether --enable-largefile was given.
 if test ${enable_largefile+y}
 then :
@@ -3610,7 +3638,6 @@ esac
 rm -rf conftest*
   fi
 fi
-
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SSL_library_init in -lssl" >&5
 printf %s "checking for SSL_library_init in -lssl... " >&6; }
@@ -3872,20 +3899,50 @@ fi
 
 
 
-# Check whether --enable-nosu was given.
-if test ${enable_nosu+y}
+if test "$cf_use_namespaces" != "no"
+then
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for unshare in -lc" >&5
+printf %s "checking for unshare in -lc... " >&6; }
+if test ${ac_cv_lib_c_unshare+y}
 then :
-  enableval=$enable_nosu; cf_use_nosu=$enableval
+  printf %s "(cached) " >&6
 else $as_nop
-  cf_use_nosu="yes"
-fi
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lc cf_use_namespaces="no" $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
 
-
-# Check whether --with-libuseful was given.
-if test ${with_libuseful+y}
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char unshare ();
+int
+main (void)
+{
+return unshare ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
 then :
-  withval=$with_libuseful; cf_system_libuseful=$withval
+  ac_cv_lib_c_unshare=yes
+else $as_nop
+  ac_cv_lib_c_unshare=no
 fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_c_unshare" >&5
+printf "%s\n" "$ac_cv_lib_c_unshare" >&6; }
+if test "x$ac_cv_lib_c_unshare" = xyes
+then :
+  cf_use_namespaces="yes"
+fi
+
+fi
+
 
 
 if test "$cf_system_libuseful" != "no"
@@ -4246,6 +4303,16 @@ then
 else
 echo "disabled prctl(PR_SET_NO_NEW_PRIVS) to control su/sudo/suid"
 fi
+
+if test "$cf_use_namespaces" = "yes"
+then
+printf "%s\n" "#define USE_NAMESPACES 1" >>confdefs.h
+
+echo "using linux namespaces for nonet, noipc, nopid, and hostname options"
+else
+echo "linux namespaces disabled or unavailable, no support for nonet, noipc, nopid, and hostname options"
+fi
+
 
 
 ac_config_files="$ac_config_files Makefile"

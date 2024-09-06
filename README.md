@@ -61,8 +61,9 @@ OPTIONS
   -m                 force menu mode (otherwise must be set in config file>
   -S                 disallow use of su/sudo/suid
   -X                 disallow running further child programs (attempts to block 'fork()')
-  -N                 enter a namespace with no network access
-  -I                 enter a namespace with no Inter Process Communication access
+  -N                 create a namespace with no network access
+  -I                 create a namespace with no Inter Process Communication access
+  -P                 create a namespace with no ability to see other processes running on the system
   -n <value>         run with process priority (´nice´) of <value>
   -T <value>         inactivity timeout after ´value´ secs. Suffixes of ´m´ ´h´ can be used for minutes and hours
   -F <value>         maximum numbers of files that can be opened
@@ -164,3 +165,10 @@ SHA256 FILE CHECKS
 ==================
 
 For the excessively paranoid, the 'sha256' option allows booking a hexadecimal hash value against a command. If this option is supplied, the command executable will be sha256 hashed to see that it matches the expected value, and will not be run if it doesn't.
+
+
+
+NAMESPACES
+==========
+
+The 'nonet', 'noipc', 'nopid' and 'hostname' options all use linux namespaces. These features are still somewhat experimental can be left out at compile time, so a given narrowsh instance may not support them.

@@ -6,8 +6,13 @@ AC_PROG_MAKE_SET
 # script's behavior did not change.  They are probably safe to remove.
 AC_PROG_EGREP
 
-AC_SYS_LARGEFILE
 
+AC_ARG_ENABLE(nosu, [  --enable-nosu           use prctl to set 'no new privs' preventing su/sudo (default=yes) ], cf_use_nosu=$enableval, cf_use_nosu="yes" )
+AC_ARG_ENABLE(namespaces, [  --enable-namespaces     use linux namespaces (default=auto) ], cf_use_namespaces=$enableval, cf_use_namespaces="yes" )
+AC_ARG_WITH(libuseful, [  --with-libuseful              use system-wide libUseful (default=auto) ], cf_system_libuseful=$withval )
+
+
+AC_SYS_LARGEFILE
 AC_CHECK_LIB(ssl,SSL_library_init,,)
 AC_CHECK_LIB(ssl,OPENSSL_init_ssl,,)
 AC_CHECK_LIB(crypto,EVP_CIPHER_CTX_init,,)
@@ -16,8 +21,12 @@ AC_CHECK_LIB(cap,cap_init,,)
 AC_CHECK_LIB(z,deflate,,)
 
 
-AC_ARG_ENABLE(nosu, [  --enable-nosu           use prctl to set 'no new privs' preventing su/sudo (default=yes) ], cf_use_nosu=$enableval, cf_use_nosu="yes" )
-AC_ARG_WITH(libuseful, [  --with-libuseful              use system-wide libUseful (default=auto) ], cf_system_libuseful=$withval )
+if test "$cf_use_namespaces" != "no"
+then
+AC_CHECK_LIB(c,unshare,cf_use_namespaces="yes",,cf_use_namespaces="no")
+fi
+
+
 
 if test "$cf_system_libuseful" != "no"
 then
@@ -82,6 +91,15 @@ then
 else
 echo "disabled prctl(PR_SET_NO_NEW_PRIVS) to control su/sudo/suid"
 fi
+
+if test "$cf_use_namespaces" = "yes"
+then
+AC_DEFINE([USE_NAMESPACES])
+echo "using linux namespaces for nonet, noipc, nopid, and hostname options"
+else
+echo "linux namespaces disabled or unavailable, no support for nonet, noipc, nopid, and hostname options"
+fi
+
 
 
 AC_CONFIG_FILES([Makefile])
