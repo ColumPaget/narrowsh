@@ -1,6 +1,11 @@
 #define _GNU_SOURCE
 #include <syslog.h>
+
+#ifdef HAVE_LIBUSEFUL
 #include "libUseful-5/libUseful.h"
+#else
+#include "libUseful-bundled/libUseful.h"
+#endif
 
 #ifdef USE_NO_NEW_PRIVS
 #include <sys/prctl.h>
@@ -20,7 +25,7 @@
 #define FLAG_NOPIDS     8192
 #define FLAG_NOEXEC    16384
 
-#define VERSION "2.0"
+#define VERSION "3.0"
 
 char *RulesDir=NULL;
 ListNode *Rules=NULL;
@@ -33,6 +38,7 @@ typedef struct
     int Timeout;
     int MaxFiles;
     int MaxProcs;
+    int MaxUProcs;
     unsigned long MaxMem;
     unsigned long MaxFileSize;
     char *OTP;
@@ -94,6 +100,7 @@ void ProcessParseSettings(TProcSettings *Settings, const char *Config)
         else if (strcmp(Name, "fsize")==0) Settings->MaxFileSize=(unsigned long) FromIEC(Value, 1024);
         else if (strcmp(Name, "mem")==0) Settings->MaxMem=(unsigned long) FromIEC(Value, 1024);
         else if (strcmp(Name, "procs")==0) Settings->MaxProcs=atoi(Value);
+        else if (strcmp(Name, "uprocs")==0) Settings->MaxUProcs=atoi(Value);
         else if (strcmp(Name, "otp")==0) Settings->OTP=CopyStr(Settings->OTP, Value);
         else if (strcmp(Name, "totp")==0) Settings->OTP=CopyStr(Settings->OTP, Value);
         else if (strcmp(Name, "challenge")==0) Settings->Challenge=CopyStr(Settings->Challenge, Value);
@@ -125,6 +132,7 @@ TProcSettings *ProcessSettingsNew(const char *Config)
     Settings->MaxFileSize=GlobalSettings.MaxFileSize;
     Settings->MaxMem=GlobalSettings.MaxMem;
     Settings->MaxProcs=GlobalSettings.MaxProcs;
+    Settings->MaxUProcs=GlobalSettings.MaxUProcs;
     Settings->HostName=CopyStr(Settings->HostName, GlobalSettings.HostName);
     ProcessParseSettings(Settings, Config);
 
@@ -183,39 +191,65 @@ void LoadConfigAddRule(const char *Rule)
 }
 
 
-int LoadConfig()
+int LoadConfigFile(const char *Path)
 {
     char *Tempstr=NULL;
-    int RetVal=FALSE;
+    int RetVal=FALSE, LineCount=0;
     ListNode *Node;
     STREAM *S;
 
+
+    if (! ConfigFileValid(Path)) return(FALSE);
+
+    S=STREAMOpen(Path, "r");
+    if (S)
+    {
+        Tempstr=STREAMReadLine(Tempstr, S);
+        while (Tempstr)
+        {
+            StripTrailingWhitespace(Tempstr);
+            StripLeadingWhitespace(Tempstr);
+            if (StrValid(Tempstr))
+            {
+                if (*Tempstr=='#') /* comment. do nothing. */ ;
+                else
+                {
+                    LoadConfigAddRule(Tempstr);
+                    LineCount++;
+                }
+            }
+            Tempstr=STREAMReadLine(Tempstr, S);
+        }
+        RetVal=TRUE;
+        STREAMClose(S);
+        syslog(LOG_INFO, "read config file '%s', %d lines", Path, LineCount);
+    }
+    else syslog(LOG_INFO, "couldn't open config-file: '%s'", Path);
+
+    Node=ListFindNamedItem(Rules, "narrowsh");
+    if (Node) ProcessParseSettings(&GlobalSettings, (const char *) Node->Item);
+
+    return(RetVal);
+}
+
+
+int LoadConfig()
+{
+    char *Path=NULL;
+    int RetVal=FALSE;
+
     if (! Rules) Rules=ListCreate();
 
-    Tempstr=MCopyStr(Tempstr, RulesDir, LookupUserName(getuid()), ".conf", NULL);
-    if (ConfigFileValid(Tempstr))
-    {
-        S=STREAMOpen(Tempstr, "r");
-        if (S)
-        {
-            Tempstr=STREAMReadLine(Tempstr, S);
-            while (Tempstr)
-            {
-                StripTrailingWhitespace(Tempstr);
-                StripLeadingWhitespace(Tempstr);
-                if (*Tempstr=='#') /* comment. do nothing. */ ;
-                else LoadConfigAddRule(Tempstr);
-                Tempstr=STREAMReadLine(Tempstr, S);
-            }
-            RetVal=TRUE;
-            STREAMClose(S);
-        }
+    Path=MCopyStr(Path, RulesDir, LookupUserName(getuid()), ".conf", NULL);
+    RetVal=LoadConfigFile(Path);
 
-        Node=ListFindNamedItem(Rules, "narrowsh");
-        if (Node) ProcessParseSettings(&GlobalSettings, (const char *) Node->Item);
+    if (! RetVal)
+    {
+        Path=MCopyStr(Path, RulesDir, LookupGroupName(getgid()), ".group", NULL);
+        RetVal=LoadConfigFile(Path);
     }
 
-    Destroy(Tempstr);
+    Destroy(Path);
 
     return(RetVal);
 }
@@ -421,7 +455,7 @@ void UnshareMapUID(pid_t pid, uid_t uid, gid_t gid)
     int fd;
 
     Tempstr=FormatStr(Tempstr, "/proc/%d/uid_map", pid);
-    fd=open(Tempstr, O_WRONLY | O_CREAT);
+    fd=open(Tempstr, O_WRONLY | O_CREAT, 0600);
     if (fd > -1)
     {
         //Tempstr=FormatStr(Tempstr, "%d %d 1\n", 65534, uid);
@@ -431,7 +465,7 @@ void UnshareMapUID(pid_t pid, uid_t uid, gid_t gid)
     }
 
     Tempstr=FormatStr(Tempstr, "/proc/%d/gid_map", pid);
-    fd=open(Tempstr, O_WRONLY | O_CREAT);
+    fd=open(Tempstr, O_WRONLY | O_CREAT, 0600);
     if (fd > -1)
     {
         //Tempstr=FormatStr(Tempstr, "%d %d 1\n", 65534, uid);
@@ -449,9 +483,9 @@ void UnshareLaunchInit()
     pid_t pid;
 
     //we are in a new pid namespace, so remount /proc
-		mount(NULL, "/proc", NULL, MS_PRIVATE|MS_REC, NULL);
-		umount("/proc");
-		mount(NULL, "/proc", "proc", 0, NULL);
+    mount(NULL, "/proc", NULL, MS_PRIVATE|MS_REC, NULL);
+    umount("/proc");
+    mount(NULL, "/proc", "proc", 0, NULL);
 
 
     if (fork() != 0)
@@ -483,30 +517,30 @@ void UnshareNamespaces(TProcSettings *Settings)
 
     if (Unshares)
     {
-				//we must capture our 'outside' uid and gid and pid in order to map them
-				//inside the container
+        //we must capture our 'outside' uid and gid and pid in order to map them
+        //inside the container
         ouid=getuid();
         ogid=getgid();
-				opid=getpid();
+        opid=getpid();
 
         unshare(CLONE_NEWUSER | CLONE_NEWNS | Unshares);
         pid=fork();
         if (pid == 0)
         {
-						//do this before proc remapped
-						UnshareMapUID(opid, ouid, ogid);
+            //do this before proc remapped
+            UnshareMapUID(opid, ouid, ogid);
             if (Unshares & CLONE_NEWPID) UnshareLaunchInit();
-        		if (StrValid(Settings->HostName)) sethostname(Settings->HostName, StrLen(Settings->HostName));
+            if (StrValid(Settings->HostName)) sethostname(Settings->HostName, StrLen(Settings->HostName));
             setgid(ogid);
             setuid(ouid);
         }
         else
         {
 //	UnshareMapUID(pid);
-				//the process outside of the pid namespace must stay
-				//alive, as it's our only connection to the namespaces
-        while (waitpid(-1, NULL, 0) > -1);
-        exit(0);
+            //the process outside of the pid namespace must stay
+            //alive, as it's our only connection to the namespaces
+            while (waitpid(-1, NULL, 0) > -1);
+            exit(0);
         }
 
     }
@@ -530,18 +564,31 @@ int ProcessSetupRestrictions(TProcSettings *Settings)
         ProcessConfig=CatStr(ProcessConfig, Tempstr);
     }
 
-    if (Settings->MaxMem > 0)
-    {
-        Tempstr=FormatStr(Tempstr, "mem=%llu ", Settings->MaxMem);
-        ProcessConfig=CatStr(ProcessConfig, Tempstr);
-    }
-
-    if (Settings->MaxFiles > 0)
+    if (Settings->MaxFiles > -1)
     {
         Tempstr=FormatStr(Tempstr, "files=%d ", Settings->MaxFiles);
         ProcessConfig=CatStr(ProcessConfig, Tempstr);
     }
 
+
+    if (Settings->MaxProcs > -1)
+    {
+        Tempstr=FormatStr(Tempstr, "nproc=%d ", Settings->MaxProcs);
+        ProcessConfig=CatStr(ProcessConfig, Tempstr);
+    }
+
+    if (Settings->MaxUProcs > -1)
+    {
+        Tempstr=FormatStr(Tempstr, "uproc=%d ", Settings->MaxUProcs);
+        ProcessConfig=CatStr(ProcessConfig, Tempstr);
+    }
+
+
+    if (Settings->MaxMem > 0)
+    {
+        Tempstr=FormatStr(Tempstr, "mem=%llu ", Settings->MaxMem);
+        ProcessConfig=CatStr(ProcessConfig, Tempstr);
+    }
 
     if (Settings->MaxFileSize > 0)
     {
@@ -550,23 +597,21 @@ int ProcessSetupRestrictions(TProcSettings *Settings)
     }
 
 
-    if (Settings->MaxProcs > 0)
-    {
-        Tempstr=FormatStr(Tempstr, "nproc=%d ", Settings->Nice);
-        ProcessConfig=CatStr(ProcessConfig, Tempstr);
-    }
 
 
-    if (Settings->HostName > 0)
+		/* this is now done in 'Unshares' function */
+		/*
+    if (StrValid(Settings->HostName))
     {
         Tempstr=FormatStr(Tempstr, "hostname=%s ", Settings->HostName);
         ProcessConfig=CatStr(ProcessConfig, Tempstr);
     }
+		*/
 
 
     if (Settings->Flags & FLAG_NOEXEC)
     {
-        ProcessConfig=CatStr(ProcessConfig, "nproc=1 ");
+        ProcessConfig=CatStr(ProcessConfig, "nproc=1 uproc=1 ");
     }
 
     if (StrValid(ProcessConfig)) ProcessApplyConfig(ProcessConfig);
@@ -899,12 +944,22 @@ void MenuMode()
 }
 
 
+
+void GlobalSettingsInit()
+{
+memset(&GlobalSettings, 0, sizeof(GlobalSettings));
+GlobalSettings.MaxProcs=-1;
+GlobalSettings.MaxUProcs=-1;
+GlobalSettings.MaxFiles=-1;
+}
+
+
 int main(int argc, char *argv[])
 {
     char *Request=NULL;
 
+    GlobalSettingsInit();
     setsid();
-    memset(&GlobalSettings, 0, sizeof(GlobalSettings));
     StdIn=STREAMFromDualFD(0,1);
     RulesDir=CopyStr(RulesDir, "/etc/narrowsh/");
 

@@ -1,3 +1,7 @@
+v3.0 (2026-10-31)
+  * add 'uprocs' option for systems not supporting namespaces (which would use 'nprocs')
+  * add manpage
+
 v2.0 (2024-09-06)
   * added nopids option and user namespace uid mapping
 

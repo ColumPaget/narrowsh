@@ -703,6 +703,12 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_wall
+enable_werror
+enable_pie
+enable_fortify
+enable_stack_protect
+enable_harden
 enable_nosu
 enable_namespaces
 with_libuseful
@@ -716,7 +722,7 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS'
-ac_subdirs_all='libUseful-5'
+ac_subdirs_all='libUseful-bundled'
 
 # Initialize some variables set by options.
 ac_init_help=
@@ -1332,6 +1338,17 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-wall           use -Wall to get maximum compile warnings
+                          (default=no)
+  --enable-werror         treat compile warnings as errors (default=no)
+  --enable-pie            build using -fPIC for position independant code, if
+                          compiler supports it (default=yes)
+  --enable-fortify        use 'FORTIFY_SOURCE=3' to harden source code
+                          (default=no)
+  --enable-stack-protect  use '-fstack-protector-strong' to harden source code
+                          (default=no)
+  --enable-harden         use 'FORTIFY_SOURCE=3' and stack-protect to harden
+                          source code (default=no)
   --enable-nosu           use prctl to set 'no new privs' preventing su/sudo (default=yes)
   --enable-namespaces     use linux namespaces (default=auto)
   --disable-largefile     omit support for large files
@@ -3409,6 +3426,191 @@ printf "%s\n" "$ac_cv_path_EGREP" >&6; }
 
 
 
+
+
+
+# Check whether --enable-wall was given.
+if test ${enable_wall+y}
+then :
+  enableval=$enable_wall; cf_use_wall=$enableval
+else $as_nop
+  cf_use_wall=no
+
+fi
+
+
+if test "$cf_use_wall" = "yes"
+then :
+
+
+  COMP_OPT=""-Wall""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+fi
+
+
+# Check whether --enable-werror was given.
+if test ${enable_werror+y}
+then :
+  enableval=$enable_werror; cf_use_werror=$enableval
+else $as_nop
+  cf_use_werror=no
+
+fi
+
+if test "$cf_use_werror" = "yes"
+then :
+
+
+  COMP_OPT=""-Werror""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+fi
+
+
+
+# Check whether --enable-pie was given.
+if test ${enable_pie+y}
+then :
+  enableval=$enable_pie; cf_use_pic=$enableval
+else $as_nop
+  cf_use_pic=yes
+
+fi
+
+if test "$cf_use_pie" = "yes"
+then :
+
+
+  COMP_OPT=""-fPIE""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+fi
+
+
+
+
+# Check whether --enable-fortify was given.
+if test ${enable_fortify+y}
+then :
+  enableval=$enable_fortify; cf_use_fortify=$enableval
+else $as_nop
+  cf_use_fortify=no
+
+fi
+
+# Check whether --enable-stack-protect was given.
+if test ${enable_stack_protect+y}
+then :
+  enableval=$enable_stack_protect; cf_use_stackprotect=$enableval
+else $as_nop
+  cf_use_stackprotect=no
+
+fi
+
+# Check whether --enable-harden was given.
+if test ${enable_harden+y}
+then :
+  enableval=$enable_harden; cf_use_harden=$enableval
+else $as_nop
+  cf_use_harden=no
+
+fi
+
+
+
+
+
 # Check whether --enable-nosu was given.
 if test ${enable_nosu+y}
 then :
@@ -3431,7 +3633,6 @@ if test ${with_libuseful+y}
 then :
   withval=$with_libuseful; cf_system_libuseful=$withval
 fi
-
 
 
 
@@ -3899,6 +4100,333 @@ fi
 
 
 
+if test "$cf_use_harden" = "yes"
+then :
+
+  cf_use_fortify="yes"
+  cf_use_stackprotect="yes"
+
+
+  COMP_OPT=""-ftrivial-auto-var-init=zero""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fstack-clash-protection""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fno-strict-overflow""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fno-strict-aliasing""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fno-delete-null-pointer-checks""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fcf-protection=full""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-mmitigate-rop""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+  COMP_OPT=""-fhardened""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+
+fi
+
+
+if test "$cf_use_fortify" = "yes"
+then :
+
+CFLAGS="$CFLAGS -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
+
+fi
+
+if test "$cf_use_stackprotect" = "yes"
+then :
+
+
+  COMP_OPT=""-fstack-protector-strong""
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler supports $COMP_OPT" >&5
+printf %s "checking if compiler supports $COMP_OPT... " >&6; }
+  OLD_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $COMP_OPT"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int test() {
+    return 1;
+  }
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  COMP_OPT_SUPPORT="yes"
+else $as_nop
+  COMP_OPT_SUPPORT="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $COMP_OPT_SUPPORT" >&5
+printf "%s\n" "$COMP_OPT_SUPPORT" >&6; }
+  if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  CFLAGS="$OLD_CFLAGS"
+fi
+
+if test "$COMP_OPT_SUPPORT" != "yes"
+then :
+  cf_use_stackprotect="no"
+fi
+
+fi
+
+
+
+
 if test "$cf_use_namespaces" != "no"
 then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for unshare in -lc" >&5
@@ -4027,56 +4555,6 @@ then :
 
 fi
 
-        else
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for GetToken in -lUseful-4" >&5
-printf %s "checking for GetToken in -lUseful-4... " >&6; }
-if test ${ac_cv_lib_Useful_4_GetToken+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lUseful-4  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char GetToken ();
-int
-main (void)
-{
-return GetToken ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_Useful_4_GetToken=yes
-else $as_nop
-  ac_cv_lib_Useful_4_GetToken=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Useful_4_GetToken" >&5
-printf "%s\n" "$ac_cv_lib_Useful_4_GetToken" >&6; }
-if test "x$ac_cv_lib_Useful_4_GetToken" = xyes
-then :
-  cf_have_libUseful4=yes
-else $as_nop
-  cf_have_libUseful4=no
-fi
-
-        ac_fn_c_check_header_compile "$LINENO" "libUseful-4/libUseful.h" "ac_cv_header_libUseful_4_libUseful_h" "$ac_includes_default"
-if test "x$ac_cv_header_libUseful_4_libUseful_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBUSEFUL_4_LIBUSEFUL_H 1" >>confdefs.h
-
-fi
-
         fi
 fi
 
@@ -4086,6 +4564,8 @@ then
   echo "installed libUseful-5 found, using that instead of bundled libUseful."
   echo "if you want to use bundled libUseful, force it with --with-libuseful=no"
   LIBUSEFUL_BUNDLED=""
+
+  printf "%s\n" "#define HAVE_LIBUSEFUL 1" >>confdefs.h
 
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for GetToken in -lUseful-5" >&5
 printf %s "checking for GetToken in -lUseful-5... " >&6; }
@@ -4217,64 +4697,14 @@ then :
 
 fi
 
-elif test "$cf_have_libUseful4" = "yes"
-then
-  echo "installed libUseful-4 found, using that instead of bundled libUseful."
-  echo "if you want to use bundled libUseful, force it with --with-libuseful=no"
-  LIBUSEFUL_BUNDLED=""
-
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for GetToken in -lUseful-4" >&5
-printf %s "checking for GetToken in -lUseful-4... " >&6; }
-if test ${ac_cv_lib_Useful_4_GetToken+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lUseful-4  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char GetToken ();
-int
-main (void)
-{
-return GetToken ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_Useful_4_GetToken=yes
-else $as_nop
-  ac_cv_lib_Useful_4_GetToken=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Useful_4_GetToken" >&5
-printf "%s\n" "$ac_cv_lib_Useful_4_GetToken" >&6; }
-if test "x$ac_cv_lib_Useful_4_GetToken" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBUSEFUL_4 1" >>confdefs.h
-
-  LIBS="-lUseful-4 $LIBS"
-
-fi
-
-
-                else
+else
   echo "using libuseful bundled with source code"
 
-  LIBUSEFUL_BUNDLED="libUseful-5/libUseful.a"
+  LIBUSEFUL_BUNDLED="libUseful-bundled/libUseful.a"
 
 
 
-subdirs="$subdirs libUseful-5"
+subdirs="$subdirs libUseful-bundled"
 
 fi
 

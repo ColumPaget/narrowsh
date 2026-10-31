@@ -1,0 +1,469 @@
+.TH  narrowsh  1 "2026/10/31"
+
+.SH narrowsh - another restricted shell
+
+.PP
+narrowsh is a very, VERY, basic shell created to handle situations where an untrusted party, and particularly an automated process, is given access to a system via telnet, ssh or the like. 
+.PP
+By default it will only accept commands using the \(aq-c\(aq shell option (which is how ssh runs commands), however it can be configured to read commands line-by-line from stdin. It was specifically created for use with ppp-over-ssh vpns that launch pppd via ssh\(aqs "-c" command-line-option, but shouldn\(aqt allow any other commands to be run from ssh. 
+.PP
+narrowsh is expected to be configured by an administrator/superuser (usually \(aqroot\(aq) and therefore expects configuration files to be in /etc/narrowsh/ and nowhere else. Further it will not run commands if those configuration files are world-writable, or if they are owned by the user that is trying to run narrowsh.
+.PP
+narrowsh is very basic, and so far supports no shell features like setting environment variables, creating pipelines of commands, or variable subsitution. It exists purely as a means to allow remote entities to run selected commands, and only those commands, on a system. 
+.PP
+narrowsh can be configured on a user-by-user basis to only allow certain commands to be run, and on both a user and command basis it can apply a number of security limits or features to the session. 
+.PP
+These features and limits are:
+.PP
+.in +2
+b) Disable use of shell primatives that allow running other processes.
+.br
+c) Disable \(aqsu\(aq, \(aqsudo\(aq or priviledge escalation by \(aqsuid\(aq methods (prctrl(PR_NO_NEW_PRIVS)).
+.br
+d) No access to network (using \(aqunshare\(aq to disconnect from network namespace)
+.br
+e) No access to IPC (using \(aqunshare\(aq to disconnect from IPC namespace)
+.br
+f) \(aqfake\(aq hostname support (using UTC namespace)
+.br
+g) Configurable inactivity timeout
+.br
+h) Secondary Challenge-Response authentication support
+.br
+i) Google-authenticator compatible OTP support
+.br
+j) Attempt to prevent further execs by using resource limits to block fork()
+.br
+k) Basic menu system
+.br
+.in
+
+.PP
+unfortunately some of thesee features, those that use namespaces or the \(aqdisable suid\(aq feature, are linux specific.
+.SH THE USUAL CAVEATS
+
+.PP
+Restricted shells suffer from one significant failing: if access is granted to any application that allows the user to launch other applications, then their security is undermined. There\(aqs a number of methods that could be used to fix this, but in the initial release of narrowsh the only one used is the \(aquser maximum processes\(aq resource limit. If narrowsh is run with \(aq-X\(aq or \(aqnoexec\(aq options, then just before an application is run, the number of processes rlimit (RLIMIT_NPROC) is set to \(aq1\(aq. This doesn\(aqt prevent execs, but it does prevent forks, and normally commands that can launch other programs don\(aqt replace themselves with those other programs, but fork first and then the child process switches to the desired program using exec. Thus preventing fork should prevent running further programs, and has been seen to do so. However, there may be ways to get around this methodology.
+.PP
+In future it is expected that other methods will be added to combat \(aqlaunching an app from an app\(aq.
+.SH USAGE
+
+.nf
+.ft CW
+.RS
+.EX
+
+    narrowsh
+    narrowsh <options> <command line>
+.RE
+.EE
+.fi
+.in
+.ad b
+.nop  
+.PP
+without any arguments narrowsh tries to open /etc/narrowsh/<username>.conf and read settings from that
+.SH OPTIONS 
+
+.PP
+.in +2
+
+.TP
+.B -c <command line>
+command-line to run, as in '/bin/sh -c <command>'
+.in
+
+.PP
+.in +2
+
+.TP
+.B -i
+force interactive mode (otherwise must be set in config file)
+.in
+
+.PP
+.in +2
+
+.TP
+.B -m
+force menu mode (otherwise must be set in config file)
+.in
+
+.PP
+.in +2
+
+.TP
+.B -S
+disallow use of su/sudo/suid
+.in
+
+.PP
+.in +2
+
+.TP
+.B -X
+disallow running further child programs (attempts to block 'fork()')
+.in
+
+.PP
+.in +2
+
+.TP
+.B -N
+create a namespace with no network access
+.in
+
+.PP
+.in +2
+
+.TP
+.B -I
+create a namespace with no Inter Process Communication access
+.in
+
+.PP
+.in +2
+
+.TP
+.B -P
+create a namespace with no ability to see other processes running on the system
+.in
+
+.PP
+.in +2
+
+.TP
+.B -n
+<value>         run with process priority ('nice') of <value>
+.in
+
+.PP
+.in +2
+
+.TP
+.B -T <value>
+inactivity timeout after 'value' secs. Suffixes of 'm' 'h' can be used for minutes and hours
+.in
+
+.PP
+.in +2
+
+.TP
+.B -F <value>
+maximum numbers of files that can be opened
+.in
+
+.PP
+.in +2
+
+.TP
+.B -M <value>
+max memory use in bytes. Supports suffixes 'k', 'M' and 'G' for kilo, mega and giga
+.in
+
+.PP
+.in +2
+
+.TP
+.B -?
+print this help
+.in
+
+.PP
+.in +2
+
+.TP
+.B -help
+print this help
+.in
+
+.PP
+.in +2
+
+.TP
+.B --help
+print this help
+.in
+
+.SH CONFIG FILE
+
+.PP
+By default narrowsh looks in `/etc/narrowsh` for a file `<username>.conf` where `<username>` is the name of the current user that's running narrowsh. Entries in config file are a single line consisting of a full path to a command followed by options that are either a single word, or a name=value pair. 
+.PP
+The config files override any settings on the command-line. Thus security options can be turned on via the command-line, but cannot be turned off if they are on in the config-file.
+.PP
+A special name 'narrowsh', that is not a full path, is used to set global options for all commands, or to set 'interactive' or 'menu' mode.
+.PP
+A special name 'exit' provides an option that will exit from a menu.
+.PP
+N.B. narrowsh will not use a config file that is world or group readable or writable, or that is owned by the authenticating user. It expects the config-file to be managed and owned by root, or at least some other user.
+.SH CONFIG FILE OPTIONS
+
+.PP
+.in +2
+
+.TP
+.B interactive
+read commands from std-in like a normal shell (can only be set against 'narrowsh')
+.in
+
+.PP
+.in +2
+
+.TP
+.B menu
+display a menu of commands to choose from (can only be set against 'narrowsh')
+.in
+
+.PP
+.in +2
+
+.TP
+.B once
+only allow picking one option from the menu, and exit when that is finished running (can only be set against 'narrowsh')
+.in
+
+.PP
+.in +2
+
+.TP
+.B banner=<string>
+up to 3 lines of banner message to display at the top of the menu (can only be set against 'narrowsh')
+.in
+
+.PP
+.in +2
+
+.TP
+.B title=<string>
+title of process to display in menu
+.in
+
+.PP
+.in +2
+
+.TP
+.B nosu
+prevent any user change via su/sudo/suid
+.in
+
+.PP
+.in +2
+
+.TP
+.B hostname=<string>
+use namespaces to 'fake' the hostname of the system
+.in
+
+.PP
+.in +2
+
+.TP
+.B nonet
+use namespaces to disable network access
+.in
+
+.PP
+.in +2
+
+.TP
+.B noipc
+use namespaces to disable IPC access
+.in
+
+.PP
+.in +2
+
+.TP
+.B noexec
+prevent the launched process from itself spawning further execuatables (currently works by blocking fork)
+.in
+
+.PP
+.in +2
+
+.TP
+.B nice=<value>
+set processor usage level ('nice') to <value>
+.in
+
+.PP
+.in +2
+
+.TP
+.B timeout=<value>
+disconnect if idle for 'value' seconds
+.in
+
+.PP
+.in +2
+
+.TP
+.B procs=<value>
+maximum number of processes for this session. THIS USES LINUX NAMESPACES to create a namespace wherein only this process and it's subprocesses exist. This allows using the system limits 'number of processes' limit, which is normally system-wide, as a limit just for this process and it's subprocesses.
+.in
+
+.PP
+.in +2
+
+.TP
+.B nprocs=<value>
+maximum number of processes for this session. THIS USES LINUX NAMESPACES to create a namespace wherein only this process and it's subprocesses exist. This allows using the system limits 'number of processes' limit, which is normally system-wide, as a limit just for this process and it's subprocesses.
+.in
+
+.PP
+.in +2
+
+.TP
+.B uprocs=<value>
+maximum number of processes for this USER. This does not use linux namespaces, but operates off a system-wide per-user count. If you set this to '1' and the user is running other processes anywhere else, then the commands run by narrowsh will not be able to fork. This can be set to 'uprocs=0' to prevent a process forking any subprocesses.
+.in
+
+.PP
+.in +2
+
+.TP
+.B files=<value>
+maximum number of open files
+.in
+
+.PP
+.in +2
+
+.TP
+.B fsize=<value>
+maximum size writable to a file (accepts a k, M, G suffix for kilo, Mega, Giga)
+.in
+
+.PP
+.in +2
+
+.TP
+.B mem=<value>
+maximum memory usage (accepts a k, M, G suffix for kilo, Mega, Giga)
+.in
+
+.PP
+.in +2
+
+.TP
+.B totp=<key>
+google-authenticator-compatible authentication using 'key'
+.in
+
+.PP
+.in +2
+
+.TP
+.B otp=<key>
+google-authenticator-compatible authentication using 'key'
+.in
+
+.PP
+.in +2
+
+.TP
+.B challenge=<key>
+challenge-response authentication using key/password 'key'
+.in
+
+.PP
+.in +2
+
+.TP
+.B cmd=<string>
+real command to run, where the normal 'path' to the command is an identifier instead
+.in
+
+.PP
+.in +2
+
+.TP
+.B args=<string>
+force arguments of command
+.in
+
+.PP
+.in +2
+
+.TP
+.B sha256=<hash>
+provide a hexidecimal hash. Executable will not be run if it doesn\(aqt match this
+.in
+
+.PP
+If the \(aqargs\(aq option is used, then the user must enter a command-line that matches exactly. If it is not used, and there is a matching command that doesn\(aqt have the \(aqargs\(aq option, then the user will be able to provide their own arguments to the command.
+.PP
+The \(aqnoexec\(aq option should prevent launching other commands from e.g. vim, but may upset programs that run subprocesses as part of their normal behavior. In that case it may be possible to use the procs option to limit the number of processes more precisely.
+.SH EXAMPLE CONFIG FILES
+
+.nf
+.ft CW
+.RS
+.EX
+
+    narrowsh interactive files=20 mem=10M
+    /usr/sbin/ppp
+    /usr/bin/vi nosu nonet noipc totp=XF943Z2140XPJMMRQ6V99
+    /usr/bin/vi args=/etc/hosts
+.RE
+.EE
+.fi
+.in
+.ad b
+.nop  
+.PP
+The above config sets global rules that all applications cannot see other apps vi proc or ps, and can have a maxiumum of 20 files open and use up to 10 meg of ram. The \(aqinteractive\(aq keyword specifies that narrowsh will allow commands to be typed in, as well as entered using \(aq-c\(aq. The applications \(aqppp\(aq and \(aqvi\(aq can be run. \(aqvi\(aq has extra restrictions of \(aqno switching of user\(aq and \(aqno network or ipc visiblity\(aq and on attempting the run the \(aqvi\(aq the user will be asked to authenticate using google-authenticator style OTP.
+.PP
+Alternatively
+.nf
+.ft CW
+.RS
+.EX
+
+    narrowsh menu totp=XF943Z2140XPJMMRQ6V99 banner="choose from the follwing options"
+    /usr/sbin/ppp files=20 mem=10M title="ppp vpn"
+    /usr/bin/vi nosu nonet noipc noexec title="vi editor"
+    exit
+.RE
+.EE
+.fi
+.in
+.ad b
+.nop  
+.PP
+Will ask the user to authenticate using google-authenticator style OTP before doing anything else. If Authentication passes then a menu of commands is offered to the user, with a banner telling them to chose one. They can choose from "ppp vpn" or "vi editor", which are the titles displayed in the menu, or \(aqexit\(aq which exits the menu. Now \(aqppp\(aq is limited on files and memory. \(aqvi\(aq is not permitted to su/sudo nor fork subprocesses, but ppp is because it needs both these features to function.
+.SH STRIPPING DANGEROUS CHARACTERS
+
+.PP
+When narrowsh runs a command, it first strips the following characters from the command-line:
+.nf
+.ft CW
+.RS
+.EX
+
+;|`\*(Am
+.RE
+.EE
+.fi
+.in
+.ad b
+.nop  
+.PP
+these characters mean something to unix shells, and allow an unintended command to be run. Stripping them prevents this.
+.SH CHALLENGE_RESPONSE AUTHENTICATION
+
+.PP
+narrowsh supports challenge-response authentication using the \(aqchallenge\(aq config-file option. This is intended to add some security to unencrypted links like telnet or rsh that send passwords in the clear. narrowsh sends a \(aqchallenge\(aq string, to which the password must be appended, and then the whole thing SHA1 hashed and the result entered into narrowsh. 
+.PP
+The \(aqchallenge\(aq config-file option has the format \(aqchallenge=<key>' where 'key' is a secret password or passphrase that is known to the authenticting user. This key is stored in the config-file in plain text, thus the config-file should not be world-readable.
+.SH TOTP AUTHENTICATION
+
+.PP
+narrowsh supports google-authenticator compatible TOTP authentication. This is set with the 'totp=<key>\(aq command-line option, where \(aqkey\(aq is a secret password (usually a long string of random characters) known to both parties. This key is stored in the config-file in plain text, thus the config-file should not be world-readable.
+.SH SHA256 FILE CHECKS
+
+.PP
+For the excessively paranoid, the \(aqsha256\(aq option allows booking a hexadecimal hash value against a command. If this option is supplied, the command executable will be sha256 hashed to see that it matches the expected value, and will not be run if it doesn\(aqt.
+.SH NAMESPACES
+ The \(aqnonet\(aq, \(aqnoipc\(aq, \(aqnopid\(aq and \(aqhostname\(aq options all use linux namespaces. These features are still somewhat experimental can be left out at compile time, so a given narrowsh instance may not support them. 
