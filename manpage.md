@@ -112,7 +112,9 @@ CONFIG FILE
 ===========
 
 
-By default narrowsh looks in `/etc/narrowsh` for a file `<username>.conf` where `<username>` is the name of the current user that's running narrowsh. Entries in config file are a single line consisting of a full path to a command followed by options that are either a single word, or a name=value pair. 
+By default narrowsh looks in `/etc/narrowsh` for a file `<username>.conf` or `<username>.user` where `<username>` is the name of the current user that's running narrowsh. If it fails to find such a file it then tries `<groupname>.group` where `<groupname>` is the primary group of the current user. This allows multiple users to share the same config-file provided they are all in the same primary group.
+
+Entries in config file are a single line consisting of a full path to a command followed by options that are either a single word, or a name=value pair. 
 
 The config files override any settings on the command-line. Thus security options can be turned on via the command-line, but cannot be turned off if they are on in the config-file.
 
@@ -125,6 +127,9 @@ N.B. narrowsh will not use a config file that is world or group readable or writ
 
 CONFIG FILE OPTIONS
 ===================
+
+Entries in config file are a single line consisting of a command-name followed by options that are either a single word, or a name=value pair. The command-name 'narrowsh' is a special case that relates to global options for the 'top' narrowsh process. These lines then collectively describe the commands that can be run using narrowsh by a particular user, or a group.
+
 
 interactive
 : read commands from std-in like a normal shell (can only be set against 'narrowsh')

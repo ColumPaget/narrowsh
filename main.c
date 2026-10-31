@@ -243,6 +243,12 @@ int LoadConfig()
     Path=MCopyStr(Path, RulesDir, LookupUserName(getuid()), ".conf", NULL);
     RetVal=LoadConfigFile(Path);
 
+		if (! RetVal)
+		{
+    Path=MCopyStr(Path, RulesDir, LookupUserName(getuid()), ".user", NULL);
+    RetVal=LoadConfigFile(Path);
+		}
+
     if (! RetVal)
     {
         Path=MCopyStr(Path, RulesDir, LookupGroupName(getgid()), ".group", NULL);
@@ -270,7 +276,7 @@ void PrintHelp()
     printf("    narrowsh <options>\n");
     printf("\nwithout any arguments narrowsh tries to open /etc/narrowsh/<username>.conf and read settings from that\n\n");
     printf("options:\n");
-    printf("  -c <command line>  command-line to run, as in Â´/bin/sh -c <command>Â´\n");
+    printf("  -c <command line>  command-line to run, as in '/bin/sh -c <command>'\n");
     printf("  -i                 force interactive mode (otherwise must be set in config file>\n");
     printf("  -m                 force menu mode (otherwise must be set in config file>\n");
     printf("  -1                 'oneshot' menu, only allow running one program, then disconnect after it's run\n");
@@ -284,20 +290,21 @@ void PrintHelp()
     printf("  -P                 create a namespace that cannot see other processes running on the system\n");
 #endif
     printf("  -n <value>         run with process priority (Â´niceÂ´) of <value>\n");
-    printf("  -T <value>         inactivity timeout after Â´valueÂ´ secs. Suffixes of Â´mÂ´ Â´hÂ´ can be used for minutes and hours\n");
+    printf("  -T <value>         inactivity timeout after Â´valueÂ´ secs. Suffixes of ´m´ ´h´ can be used for minutes and hours\n");
     printf("  -f <value>         maximum numbers of files that can be opened\n");
     printf("  -files <value>     maximum numbers of files that can be opened\n");
     printf("  -maxfiles <value>  maximum numbers of files that can be opened\n");
-    printf("  -F <value>         max file size bytes. Supports suffixes Â´kÂ´, Â´MÂ´ and Â´GÂ´ for kilo, mega and giga\n");
-    printf("  -fsize <value>     max file size bytes. Supports suffixes Â´kÂ´, Â´MÂ´ and Â´GÂ´ for kilo, mega and giga\n");
-    printf("  -M <value>         max memory use in bytes. Supports suffixes Â´kÂ´, Â´MÂ´ and Â´GÂ´ for kilo, mega and giga\n");
-    printf("  -mem <value>       max memory use in bytes. Supports suffixes Â´kÂ´, Â´MÂ´ and Â´GÂ´ for kilo, mega and giga\n");
+    printf("  -F <value>         max file size bytes. Supports suffixes ´k´, ´M´ and ´G´ for kilo, mega and giga\n");
+    printf("  -fsize <value>     max file size bytes. Supports suffixes ´k´, ´M´ and ´G´ for kilo, mega and giga\n");
+    printf("  -M <value>         max memory use in bytes. Supports suffixes ´k´, ´M´ and ´G´ for kilo, mega and giga\n");
+    printf("  -mem <value>       max memory use in bytes. Supports suffixes ´k´, ´M´ and ´G´ for kilo, mega and giga\n");
     printf("  -?                 print this help\n");
     printf("  -help              print this help\n");
     printf("  --help             print this help\n");
 
     printf("\nconfig file:\n");
-    printf("  Entries in config file are a single line consisting of a command-name followed by options that are either a single word, or a name=value pair. The command-name 'narrowsh' is a special case that relates to global options for the 'top' narrowsh process.\n");
+		printf("  The config files are stored only in '/etc/narrowsh/' and can have the form '/etc/narrowsh/<username>.conf' or '/etc/narrowsh/<username>.user' or '/etc/narrowsh/<groupname>.group'. Where <username> and <groupname> are the user and group that narrowsh is being run by. If the username file exists, then that is used, if not narrowsh falls back to the 'group' file.\n");
+    printf("  Entries in config file are a single line consisting of a command-name followed by options that are either a single word, or a name=value pair. The command-name 'narrowsh' is a special case that relates to global options for the 'top' narrowsh process. These lines then collectively describe the commands that can be run using narrowsh by a particular user, or a group.\n");
     printf("\nconfig file options:\n");
     printf("  interactive        read commands from std-in like a normal shell (can only be set against 'narrowsh')\n");
     printf("  menu               display a menu of commands to choose from (can only be set against 'narrowsh')\n");

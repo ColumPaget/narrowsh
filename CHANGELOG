@@ -1,4 +1,5 @@
 v3.0 (2026-10-31)
+  * add 'group config file' for entire groups of users
   * add 'uprocs' option for systems not supporting namespaces (which would use 'nprocs')
   * add manpage
 
